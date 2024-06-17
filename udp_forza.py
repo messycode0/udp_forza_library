@@ -3,7 +3,7 @@
 import socket
 import struct
 
-UDP_IP = "0.0.0.0"
+UDP_IP = "0.0.0.0" # looking at all devices
 UDP_PORT = 12345
 
 sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
