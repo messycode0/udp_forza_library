@@ -10,17 +10,23 @@ def map_value(value, from_low, from_high, to_low, to_high):
 
     return mapped_value
 
+# sec --> MM:SS.sss
 def format_time(seconds):
-    # Separate the seconds and milliseconds
     total_seconds = int(seconds)
     milliseconds = int((seconds - total_seconds) * 1000)
 
-    # Calculate minutes and remaining seconds
     minutes = total_seconds // 60
     remaining_seconds = total_seconds % 60
 
-    # Format the time string
     time_string = f"{minutes}:{remaining_seconds:02d}.{milliseconds:03d}"
+    return time_string
+
+# mil --> HH:MM:SS.sss
+def format_time_from_milliseconds(milliseconds):
+    total_seconds, remaining_milliseconds = divmod(milliseconds, 1000)
+    total_minutes, remaining_seconds = divmod(total_seconds, 60)
+    hours, remaining_minutes = divmod(total_minutes, 60)
+    time_string = f"{hours}:{remaining_minutes:02d}:{remaining_seconds:02d}.{remaining_milliseconds:03d}"
     return time_string
 
 def main():
@@ -37,6 +43,7 @@ def main():
     BLUE = (0, 0, 255)
     YELLOW = (255, 255, 0)
     ALT_RED = (220,20,60)
+    PURPLE = (255, 0, 255)
 
     font_s = pygame.font.Font(None, 34)
     font_m = pygame.font.Font(None, 74)
@@ -57,6 +64,7 @@ def main():
 
         # Start putting Data into Varibles
         is_race_on = un_data[0]
+        timestamp = format_time_from_milliseconds(un_data[1])
         gear = un_data[81]
         speed = un_data[61]
         speed = speed * 2.23694
@@ -70,9 +78,12 @@ def main():
 
         best_lap = un_data[71]
         best_lapf = format_time(best_lap)
-        cur_lap = un_data[73]
-        cur_lapf = format_time(cur_lap)
+        cur_lapa = un_data[73]
+        cur_lapf = format_time(cur_lapa)
         last_lapf = format_time(un_data[72])
+
+        best_lap_delta = cur_lapa - best_lap
+        best_lap_deltaf = format_time(best_lap_delta)
 
         cur_race_timef = format_time(un_data[74])
 
@@ -80,6 +91,19 @@ def main():
         race_pos = un_data[76]
 
         normalized_driving_line = un_data[83]
+
+        rev_idle = round(un_data[3])
+        rev_max = round(un_data[2])
+        rev_cur = round(un_data[4])
+
+        try:
+            rev_idlem = round(map_value(rev_idle, 0, rev_max, 0, 5000), 1)
+            rev_maxm = round(map_value(rev_max, 0, rev_max, 0, 5000), 1)
+            rev_curm = round(map_value(rev_cur, 0, rev_max, 0, 5000), 1)
+        except: 
+            rev_idlem = 0
+            rev_maxm = 0
+            rev_curm = 0
 
 
         # I Dont know how tirewear relates to the outputed number I get from the packet
@@ -98,9 +122,11 @@ def main():
         # Screen Rendering here
 
         if is_race_on == 1:
-            screen.blit(font_s.render(f'The Sim is Running', True, GREEN), (20, 20))
+            screen.blit(font_s.render(f'The Sim is Running', True, GREEN), (20, 20 ))
         else:
             screen.blit(font_s.render(f'The Sim is NOT Running', True, RED), (20, 20))
+
+        screen.blit(font_s.render(f'{timestamp}', True, BLUE), (350, 20))
 
         if gear == 0:
             screen.blit(font_m.render(f'Gear: {gear} (R)', True, ALT_RED), (20, 70))
@@ -119,7 +145,11 @@ def main():
         screen.blit(font_m.render(f"CRT: {cur_race_timef}", True, WHITE), (1459, 790))
         screen.blit(font_m.render(f"LL: {last_lapf}", True, WHITE), (1500, 860))
         screen.blit(font_m.render(f"CL: {cur_lapf}", True, WHITE), (1500, 930))
-        screen.blit(font_m.render(f"BL: {best_lapf}", True, WHITE), (1500, 1000))
+        screen.blit(font_m.render(f"BL: {best_lapf}", True, PURPLE), (1500, 1000))
+
+        if cur_lapa >= best_lap:
+            screen.blit(font_m.render(f"BLD: {best_lap_deltaf}", True, ALT_RED), (1000, 1000))
+        else: screen.blit(font_m.render(f"BLD: {best_lap_deltaf}", True, WHITE), (1000, 1000))
 
 
         screen.blit(font_m.render(f"L{cur_lap}", True, WHITE), (1500, 720))
@@ -128,6 +158,15 @@ def main():
 
         screen.blit(font_m.render(f"Norm Drive line: {normalized_driving_line}", True, WHITE), (1350, 620))
 
+        screen.blit(font_m.render(f"Max RPM: {rev_max}", True, WHITE), (20, 900))
+        screen.blit(font_m.render(f"Cur  RPM: {rev_cur}", True, WHITE), (20, 950))
+        screen.blit(font_m.render(f"Idle RPM: {rev_idle}", True, WHITE), (20, 1000))
+
+        screen.blit(font_m.render(f"Max RPM (M): {rev_maxm}", True, WHITE), (450, 900))
+        if rev_maxm - rev_curm < 1000: 
+            screen.blit(font_m.render(f"Cur  RPM (M): {rev_curm}", True, ALT_RED), (450, 950))
+        else: screen.blit(font_m.render(f"Cur  RPM (M): {rev_curm}", True, WHITE), (450, 950))
+        screen.blit(font_m.render(f"Idle RPM (M): {rev_idlem}", True, WHITE), (450, 1000))
         
 
 
@@ -152,7 +191,7 @@ def main():
 
 
         pygame.display.flip()
-        clock.tick(60)
+        clock.tick(60) # you may change this however it is set to 60 becuase forza sends 60 packets per second, so no point
 
 
     pass
